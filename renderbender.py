@@ -71,8 +71,12 @@ parser.add_argument('--prodid', metavar='', help='Calendar PRODID field', requir
 parser.add_argument('--url', metavar='', help='SMTP server:port, , will also check env variable SMTP_SERVER', required=False)
 parser.add_argument('--user',metavar='',help='SMTP Username, will also check env variable SMTP_USER', required=False)
 parser.add_argument('--debug', help='Enable debug, print message prior to sending', action='store_true', required=False)
+parser.add_argument('--dryrun', help='Disable sending of message', action='store_true', required=False)
 
 args = parser.parse_args()
+
+if args.dryrun:
+    args.debug = True
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -161,6 +165,13 @@ boundary = str(uuid4())
 selected_prodid = args.prodid if args.prodid else random.choice(microsoft_prodids)
 chars = string.ascii_letters + string.digits
 
+if args.debug:
+    print(f"""
+Sending from: {args.from_addr}
+Spoofing from: {args.from_name}
+spoof_from: {args.spoof_from}
+""")
+
 message = f"""From: "{args.from_name} <{args.spoof_from}>;" <{args.from_addr}>
 Subject:{args.subject}
 MIME-Version: 1.0
@@ -225,18 +236,19 @@ END:VCALENDAR
 if args.debug:
     print(message)
 
-try:
-    logger.info(f"Connecting to SMTP server {url}:{port}")
-    with smtplib.SMTP_SSL(url, port) as server:
-        server.login(user, password)
-        server.sendmail(args.from_addr, args.target, message)
-        logger.info("Email sent successfully")
-except smtplib.SMTPAuthenticationError:
-    logger.error("SMTP authentication failed")
-    sys.exit(1)
-except smtplib.SMTPException as e:
-    logger.error(f"SMTP error: {e}")
-    sys.exit(1)
-except Exception as e:
-    logger.error(f"Unexpected error: {e}")
-    sys.exit(1)
+if not args.dryrun:
+    try:
+        logger.info(f"Connecting to SMTP server {url}:{port}")
+        with smtplib.SMTP_SSL(url, port) as server:
+            server.login(user, password)
+            server.sendmail(args.from_addr, args.target, message)
+            logger.info("Email sent successfully")
+    except smtplib.SMTPAuthenticationError:
+        logger.error("SMTP authentication failed")
+        sys.exit(1)
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        sys.exit(1)
