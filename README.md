@@ -66,3 +66,25 @@ options:
 ```
 
 Check out the included `send-example*.sh` scripts for examples.
+
+### Generating timestamps for meeting-begin/meeting-end
+
+Linux
+
+```shell
+# 1 day from now
+date --date="+1 day" +%Y%m%dT%H%M%S
+
+# 8 hours from now
+date --date="+8 hour" +%Y%m%dT%H%M%S
+```
+
+PowerShell:
+
+```powershell
+# 1 day from now
+(Get-Date).AddDays(1).ToString("yyyyMMddTHHmmss")
+
+# 8 hours from now
+(Get-Date).AddHours(8).ToString("yyyyMMddTHHmmss")
+```
