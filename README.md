@@ -47,6 +47,8 @@ Sends phishing emails with 'on behalf of' with calender invites
 options:
   -h, --help          show this help message and exit
   --body              Body of the email
+  --debug             Enable debug, print message prior to sending
+  --dryrun            Disable sending of message
   --from              Actual from address
   --meeting-begin     Begin time for Teams meeting
   --meeting-end       End time for Teams meeting
