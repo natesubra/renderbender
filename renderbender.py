@@ -70,6 +70,7 @@ parser.add_argument('--priority', metavar='', type=int, default=5, help='Priorit
 parser.add_argument('--prodid', metavar='', help='Calendar PRODID field', required=False)
 parser.add_argument('--url', metavar='', help='SMTP server:port, , will also check env variable SMTP_SERVER', required=False)
 parser.add_argument('--user',metavar='',help='SMTP Username, will also check env variable SMTP_USER', required=False)
+parser.add_argument('--no-auth',metavar='',dest='no_auth', help='Skips authentication, use for unauthenticated smtp servers', required=False)
 parser.add_argument('--debug', help='Enable debug mode, print message prior to sending', action='store_true', required=False)
 parser.add_argument('--dryrun', help='Disable sending of message', action='store_true', required=False)
 
@@ -147,7 +148,7 @@ url, port = parse_smtp_server(smtp_server)
 user = args.user if args.user else os.environ.get("SMTP_USER")
 password = args.password if args.password else os.environ.get("SMTP_PASSWORD")
 
-if not user or not password:
+if (not user or not password) and not args.no_auth:
     logger.error("SMTP credentials must be provided")
     sys.exit(1)
 
@@ -239,10 +240,21 @@ if args.debug:
 if not args.dryrun:
     try:
         logger.info(f"Connecting to SMTP server {url}:{port}")
-        with smtplib.SMTP_SSL(url, port) as server:
-            server.login(user, password)
-            server.sendmail(args.from_addr, args.target, message)
-            logger.info("Email sent successfully")
+        try:
+            with smtplib.SMTP_SSL(url, port) as server:
+                if not args.no_auth:
+                    server.login(user, password)
+                server.sendmail(args.from_addr, args.target, message)
+        except:
+            # Some servers don't handle TLS the same way
+            with smtplib.SMTP(url, port) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                if not args.no_auth:
+                    server.login(user, password)
+                server.sendmail(args.from_addr, args.target, message)
+        logger.info("Email sent successfully")
     except smtplib.SMTPAuthenticationError:
         logger.error("SMTP authentication failed")
         sys.exit(1)
